@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day Spine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#16242F; --ink-2:#3C4C5A; --ink-3:#6B7C8A;
+  --field:#FFFFFF; --page:#E9EDF1;
+  --rule:#D3DBE3; --rule-soft:#E6EBEF; --hollow:#EDF1F4;
+  --wash:10%;
+  --now:#DC2626;
+  --warn:#B45309;
+}
+:root:not([data-theme="light"]){
+  @media (prefers-color-scheme: dark){
+    --ink:#E8EEF3; --ink-2:#B3C1CD; --ink-3:#8394A3;
+    --field:#141C24; --page:#0B1116;
+    --rule:#2A3742; --rule-soft:#1F2A33; --hollow:#19222B;
+    --wash:15%; --now:#FF6161; --warn:#E0A23C;
+  }
+}
+:root[data-theme="dark"]{
+  --ink:#E8EEF3; --ink-2:#B3C1CD; --ink-3:#8394A3;
+  --field:#141C24; --page:#0B1116;
+  --rule:#2A3742; --rule-soft:#1F2A33; --hollow:#19222B;
+  --wash:15%; --now:#FF6161; --warn:#E0A23C;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--page); color:var(--ink);
+  font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  font-variant-numeric:tabular-nums; -webkit-font-smoothing:antialiased;
+  display:flex; flex-direction:column; padding:14px; gap:11px;
+}
+
+/* ---------------- top bar ---------------- */
+.bar{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.title{display:flex;align-items:baseline;gap:9px;min-width:0}
+.title h1{font-size:19px;font-weight:700;letter-spacing:-.02em;white-space:nowrap}
+.title span{font-size:12px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tools{display:flex;align-items:center;gap:8px;flex:0 0 auto;flex-wrap:wrap}
+.views{display:flex;background:var(--field);border:1px solid var(--rule);border-radius:999px;padding:2px}
+.views button{font:inherit;font-size:12.5px;font-weight:600;border:0;background:transparent;
+  color:var(--ink-3);padding:5px 15px;border-radius:999px;cursor:pointer}
+.views button[aria-selected="true"]{background:var(--ink);color:var(--field)}
+.iconbtn{
+  font:inherit;font-size:13px;font-weight:600;cursor:pointer;
+  background:var(--field);color:var(--ink-2);
+  border:1px solid var(--rule);border-radius:999px;padding:6px 14px;
+}
+.iconbtn:hover{color:var(--ink);border-color:var(--ink-3)}
+.iconbtn.primary{background:var(--ink);border-color:var(--ink);color:var(--field)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--now);outline-offset:2px}
+
+/* ---------------- stage ---------------- */
+.stage{
+  flex:1 1 auto;min-height:0;background:var(--field);
+  border:1px solid var(--rule);border-radius:5px;
+  padding:13px 13px 9px;display:flex;flex-direction:column;overflow:auto;
+  position:relative;
+}
+.board{
+  flex:1 1 auto;display:grid;
+  grid-template-columns:48px 1fr;
+  grid-template-rows:auto 1fr;
+  column-gap:10px;
+  min-height:470px;position:relative;
+}
+.bandslot{grid-column:2;grid-row:1}
+.ticks{grid-column:1;grid-row:2;position:relative}
+.ticks-in{position:relative;height:100%}
+.tick{position:absolute;right:0;transform:translateY(-50%);
+  font-size:11px;font-weight:600;color:var(--ink-3);padding-right:8px}
+.tick::after{content:"";position:absolute;right:0;top:50%;width:5px;height:1px;background:var(--rule)}
+.cols{grid-column:2;grid-row:2;display:grid;gap:10px;min-width:0}
+
+/* ---------------- conference bands ---------------- */
+.bands{display:grid;gap:10px;margin-bottom:9px}
+.bands:empty{display:none}
+.band{
+  border:1.5px solid var(--ink-2);border-radius:4px;background:transparent;
+  padding:6px 10px 6px 9px;display:flex;align-items:center;gap:8px;min-width:0;cursor:pointer;
+}
+.band .dot{flex:0 0 auto;width:7px;height:7px;border-radius:50%;
+  border:2px solid var(--ink-2);background:transparent}
+.band .bt{font-size:12.5px;font-weight:700;color:var(--ink);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.band .bs{font-size:11px;color:var(--ink-3);flex:0 0 auto;margin-left:auto}
+
+/* ---------------- columns & spines ---------------- */
+.col{min-width:0;display:flex;flex-direction:column}
+.colhead{flex:0 0 auto;font-size:12.5px;font-weight:600;color:var(--ink-2);padding:0 0 7px 2px}
+.colhead.today{color:var(--now)}
+.spine{flex:1 1 auto;position:relative}
+
+.gapabs{
+  position:absolute;left:0;right:0;
+  display:flex;align-items:center;gap:9px;padding:0 2px;overflow:hidden;
+}
+.gapabs .hollow{flex:0 0 auto;width:11px;align-self:stretch;margin:1px 0;
+  border:1px dashed var(--rule);border-radius:2px;background:var(--hollow)}
+.gapabs .txt{font-size:11.5px;font-weight:600;color:var(--ink-3);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gapabs .txt em{font-style:normal;font-weight:500;opacity:.72}
+
+/* an event: fixed course session (solid) or your own item (outline) */
+.evt{position:absolute;display:flex;overflow:hidden;border-radius:3px;cursor:pointer}
+.evt .rail{flex:0 0 auto;width:11px;border-radius:2px;background:var(--hue)}
+.evt.aux .rail{background:repeating-linear-gradient(180deg,var(--hue) 0 6px,transparent 6px 11px)}
+.evt .body{
+  flex:1 1 auto;min-width:0;padding:7px 9px 6px 10px;position:relative;z-index:1;
+  background:color-mix(in srgb, var(--hue) var(--wash), var(--field));
+  border-radius:0 3px 3px 0;
+  display:flex;align-items:flex-start;justify-content:space-between;gap:8px;
+}
+.evt .meta{min-width:0;position:relative;z-index:1}
+.code{font-size:14.5px;font-weight:700;letter-spacing:-.01em;color:var(--hue);line-height:1.15;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.name{font-size:12px;font-weight:600;color:var(--ink);line-height:1.25;margin-top:2px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kind{font-size:10.5px;color:var(--ink-2);margin-top:3px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.who{font-size:10px;color:var(--ink-3);margin-top:1px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gate{flex:0 0 auto;text-align:right;position:relative;z-index:1}
+.gate b{display:block;font-size:15px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.gate span{font-size:9.5px;color:var(--ink-3)}
+
+/* yours: outline, never filled — negotiable by definition */
+.evt.mine{border:1.5px solid var(--ink-2)}
+.evt.mine .rail{background:transparent;border-right:1.5px solid var(--ink-2);border-radius:0;width:9px}
+.evt.mine .body{background:transparent;border:0;border-radius:0}
+
+/* narrow lanes shed detail in order of importance; the room never goes */
+.evt.w3 .who,.evt.w3 .gate span{display:none}
+.evt.w2 .kind{display:none}
+.evt.w2 .name{font-size:10.5px}
+.evt.w2 .body{flex-direction:column;gap:3px;align-items:stretch;padding:6px 7px 5px 8px}
+.evt.w2 .gate{text-align:left}
+.evt.w1 .name{display:none}
+.evt.w1 .code{font-size:11px;white-space:normal;line-height:1.15}
+.evt.w1 .gate b{font-size:11.5px}
+.evt.w1 .remain{font-size:9.5px}
+.evt.tiny .who,.evt.tiny .gate span{display:none}
+.evt.tiny .body{padding:5px 8px 4px 9px}
+
+/* A clash is a property of a time range: drawn on the rail across exactly
+   the contested minutes — never as a badge sitting on the content. */
+.clashband{
+  position:absolute;left:0;width:11px;z-index:2;pointer-events:none;
+  background:repeating-linear-gradient(45deg,
+    var(--warn) 0 3px, color-mix(in srgb,var(--warn) 22%,transparent) 3px 6px);
+  border-radius:2px;
+}
+.evt.mine .clashband{width:9px;border-radius:0}
+
+/* ---------------- live layer: time drains the card, never overlays it ---------------- */
+.drain{
+  position:absolute;left:0;right:0;top:0;z-index:0;
+  background:var(--hollow);border-radius:3px 3px 0 0;pointer-events:none;
+}
+.evt.done .meta,.evt.done .gate{opacity:.5}
+.gapabs.done{opacity:.45}
+.gate .remain{display:block;font-size:10px;font-weight:700;color:var(--now);margin-top:4px}
+.tick.now{
+  color:var(--field);background:var(--now);
+  border-radius:2px;padding:1px 5px;font-weight:700;z-index:3;margin-right:-2px;
+}
+.tick.now::after{background:var(--now);width:7px;right:-9px;height:2px}
+
+/* ---------------- footer ---------------- */
+.foot{
+  flex:0 0 auto;display:flex;flex-wrap:wrap;gap:5px 16px;justify-content:space-between;
+  padding-top:9px;margin-top:9px;border-top:1px solid var(--rule-soft);
+  font-size:11.5px;color:var(--ink-3);
+}
+.foot b{color:var(--ink-2);font-weight:600}
+
+/* ---------------- empty states ---------------- */
+.empty{
+  flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;text-align:center;padding:30px 16px;
+}
+.empty h2{font-size:17px;font-weight:700;letter-spacing:-.01em}
+.empty p{font-size:13px;color:var(--ink-3);max-width:38ch;line-height:1.6}
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:420px}
+.chip-day{
+  font:inherit;font-size:13px;font-weight:600;cursor:pointer;
+  border:1.5px solid var(--rule);background:var(--field);color:var(--ink-2);
+  border-radius:999px;padding:8px 16px;
+}
+.chip-day[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--field)}
+
+/* ---------------- editor ---------------- */
+.scrim{position:fixed;inset:0;background:rgba(6,12,18,.5);z-index:40;
+  display:none;align-items:center;justify-content:center;padding:16px}
+.scrim[data-open="true"]{display:flex}
+.sheet{
+  width:100%;max-width:460px;max-height:100%;overflow:auto;
+  background:var(--field);border:1px solid var(--rule);border-radius:8px;
+  padding:18px;display:flex;flex-direction:column;gap:13px;
+}
+.sheet h2{font-size:16px;font-weight:700;letter-spacing:-.01em}
+.sheet h3{font-size:12.5px;font-weight:700;color:var(--ink-2);text-transform:uppercase;letter-spacing:.03em;
+  margin-top:2px}
+.seg2,.seg3{display:flex;background:var(--hollow);border-radius:6px;padding:3px;gap:3px}
+.seg2 button,.seg3 button{flex:1;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;
+  border:0;background:transparent;color:var(--ink-3);padding:7px 5px;border-radius:4px}
+.seg2 button[aria-selected="true"],.seg3 button[aria-selected="true"]{background:var(--field);color:var(--ink);
+  box-shadow:0 1px 3px rgba(0,0,0,.14)}
+.seg2 button:disabled,.seg3 button:disabled{opacity:.4;cursor:not-allowed}
+.row{display:flex;gap:9px;flex-wrap:wrap}
+.f{display:flex;flex-direction:column;gap:4px;flex:1;min-width:110px}
+.f label{font-size:11px;font-weight:600;color:var(--ink-3)}
+.f input,.f select,.f textarea{
+  font:inherit;font-size:13px;color:var(--ink);background:var(--field);
+  border:1px solid var(--rule);border-radius:5px;padding:8px 9px;width:100%;
+}
+.f textarea{min-height:110px;font-size:11.5px;resize:vertical}
+.optional{font-weight:400;color:var(--ink-3)}
+
+.swatches{display:flex;flex-wrap:wrap;gap:7px}
+.swatch{
+  width:26px;height:26px;border-radius:50%;cursor:pointer;
+  border:2px solid transparent;background:var(--sw);
+  display:flex;align-items:center;justify-content:center;
+}
+.swatch[aria-pressed="true"]{border-color:var(--ink)}
+.swatch svg{width:12px;height:12px;fill:#fff;visibility:hidden}
+.swatch[aria-pressed="true"] svg{visibility:visible}
+
+.sesslist{display:flex;flex-direction:column;gap:6px}
+.sessrow{
+  display:flex;align-items:center;gap:8px;
+  border:1px solid var(--rule);border-radius:6px;padding:7px 9px;font-size:12px;
+}
+.sessrow .srmeta{flex:1;min-width:0;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sessrow b{color:var(--ink);font-weight:700}
+.sessrow button{
+  font:inherit;font-size:12px;cursor:pointer;border:0;background:transparent;color:var(--ink-3);
+  padding:3px 6px;border-radius:4px;
+}
+.sessrow button:hover{color:var(--ink)}
+.subform{
+  border:1px dashed var(--rule);border-radius:6px;padding:10px;
+  display:flex;flex-direction:column;gap:9px;
+}
+.otherlabel{display:none}
+.otherlabel[data-on="true"]{display:flex}
+
+.warnbox{
+  border:1px solid var(--warn);border-radius:6px;padding:10px 11px;
+  background:color-mix(in srgb,var(--warn) 9%,var(--field));
+  font-size:12px;line-height:1.55;display:none;
+}
+.warnbox[data-on="true"]{display:block}
+.warnbox b{display:block;font-weight:700;color:var(--warn);margin-bottom:4px}
+.warnbox ul{margin:0 0 0 16px}
+
+.acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.btn{font:inherit;font-size:13px;font-weight:600;cursor:pointer;border-radius:6px;padding:9px 15px;
+  border:1px solid var(--rule);background:var(--field);color:var(--ink-2)}
+.btn.primary{background:var(--ink);border-color:var(--ink);color:var(--field)}
+.btn.danger{color:var(--now);border-color:color-mix(in srgb,var(--now) 45%,var(--rule))}
+.btn.ghost{margin-right:auto}
+.btn.small{padding:6px 11px;font-size:12px}
+.hint{font-size:11px;color:var(--ink-3);line-height:1.5}
+.err{font-size:11.5px;color:var(--now);font-weight:600;display:none}
+.err[data-on="true"]{display:block}
+
+.courselist{display:flex;flex-direction:column;gap:6px;max-height:260px;overflow:auto}
+.courserow{
+  display:flex;align-items:center;gap:9px;border:1px solid var(--rule);border-radius:6px;
+  padding:8px 10px;cursor:pointer;
+}
+.courserow:hover{border-color:var(--ink-3)}
+.courserow .dot2{width:11px;height:11px;border-radius:50%;background:var(--sw);flex:0 0 auto}
+.courserow .cinfo{flex:1;min-width:0}
+.courserow .ccode{font-size:13px;font-weight:700}
+.courserow .cname{font-size:11px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.courserow .ccount{font-size:11px;color:var(--ink-3);flex:0 0 auto}
+
+/* ---------------- view modes ---------------- */
+body[data-view="week"] .who{display:none}
+body[data-view="week"] .code{font-size:12.5px}
+body[data-view="week"] .name{font-size:10.5px}
+body[data-view="week"] .kind{font-size:9.5px}
+body[data-view="week"] .gate b{font-size:12px}
+body[data-view="week"] .gate span{display:none}
+body[data-view="week"] .evt .body{flex-direction:column;gap:3px;align-items:stretch;padding:6px 7px 5px 8px}
+body[data-view="week"] .gate{text-align:left}
+
+@media (max-width:760px){
+  body{padding:9px;gap:9px}
+  .title h1{font-size:16px}
+  .title span{display:none}
+  .stage{padding:11px 9px 8px}
+  .board{grid-template-columns:40px 1fr;min-height:440px}
+  body[data-view="week"] .board{min-width:660px}
+  body[data-view="week"] .stage{overflow-x:auto}
+  .iconbtn{padding:6px 11px}
+}
+
+@media (prefers-reduced-motion:no-preference){
+  .evt,.gapabs{transition:opacity .2s ease}
+}
+
+@media print{
+  @page{size:A4 portrait;margin:11mm}
+  html,body{height:auto}
+  body{background:#fff;padding:0;display:block}
+  .views,.tools,.scrim{display:none !important}
+  .stage{border:none;padding:0;overflow:visible}
+  .board{min-height:620px}
+  .evt.done .meta,.evt.done .gate,.gapabs.done{opacity:1}
+  .drain,.tick.now,.remain{display:none}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body data-view="today">
+
+<div class="bar">
+  <div class="title"><h1 id="dayTitle">Day Spine</h1><span id="daySub"></span></div>
+  <div class="tools">
+    <button class="iconbtn" id="btnManage">Manage</button>
+    <button class="iconbtn primary" id="btnAdd">+ Add</button>
+    <div class="views" role="tablist">
+      <button id="btnToday" role="tab" aria-selected="true">Today</button>
+      <button id="btnWeek" role="tab" aria-selected="false">Week</button>
+    </div>
+  </div>
+</div>
+
+<div class="stage" id="stage">
+  <div class="board" id="board" style="display:none">
+    <div class="bandslot"><div class="bands" id="bands"></div></div>
+    <div class="ticks"><div class="ticks-in" id="ticksIn"></div></div>
+    <div class="cols" id="cols"></div>
+  </div>
+  <div class="foot" id="foot" style="display:none"><span id="footLeft"></span><span id="footRight"></span></div>
+  <div class="empty" id="empty"></div>
+</div>
+
+<!-- ============== Add / Edit sheet: Course, Meeting, or Conference ============== -->
+<div class="scrim" id="scrim">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="edTitle">
+    <h2 id="edTitle">Add</h2>
+
+    <div class="seg3" id="typeSel">
+      <button data-t="course" aria-selected="true">Course</button>
+      <button data-t="meeting" aria-selected="false">Meeting</button>
+      <button data-t="conference" aria-selected="false">Conference</button>
+    </div>
+
+    <!-- ---- Course fields ---- -->
+    <div id="courseFields">
+      <div class="row">
+        <div class="f"><label for="cCode">Code</label>
+          <input id="cCode" type="text" placeholder="MATH 103" autocomplete="off"></div>
+        <div class="f" style="flex:2"><label for="cName">Name</label>
+          <input id="cName" type="text" placeholder="Calculus for Computational Science" autocomplete="off"></div>
+      </div>
+      <div class="f" style="margin-top:9px">
+        <label for="cCredits">Credits <span class="optional">(optional)</span></label>
+        <input id="cCredits" type="number" min="0" step="0.5" style="max-width:110px" placeholder="3">
+      </div>
+      <div class="f" style="margin-top:9px">
+        <label>Color</label>
+        <div class="swatches" id="swatches"></div>
+      </div>
+
+      <h3 style="margin-top:12px">Times</h3>
+      <div class="sesslist" id="sessList"></div>
+      <button class="btn small" id="btnAddSession" style="align-self:flex-start">+ Add a time</button>
+
+      <div class="subform" id="sessForm" style="display:none">
+        <div class="row">
+          <div class="f"><label for="sType">Type</label>
+            <select id="sType">
+              <option value="Lecture">Lecture</option>
+              <option value="Lab">Lab</option>
+              <option value="Tutorial">Tutorial</option>
+              <option value="Section">Section</option>
+              <option value="Other">Other&hellip;</option>
+            </select>
+          </div>
+          <div class="f otherlabel" id="sOtherWrap"><label for="sOther">Label it</label>
+            <input id="sOther" type="text" placeholder="Recitation" autocomplete="off"></div>
+          <div class="f"><label for="sSec">Section <span class="optional">(optional)</span></label>
+            <input id="sSec" type="text" placeholder="02" autocomplete="off"></div>
+        </div>
+        <div class="row">
+          <div class="f"><label for="sDay">Day</label><select id="sDay"></select></div>
+          <div class="f"><label for="sStart">Starts</label><input id="sStart" type="time" value="10:00" step="300"></div>
+          <div class="f"><label for="sLen">Length</label>
+            <select id="sLen">
+              <option value="30">30 min</option>
+              <option value="60">1 hour</option>
+              <option value="90">1.5 hours</option>
+              <option value="120" selected>2 hours</option>
+              <option value="180">3 hours</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div class="f"><label for="sRoom">Room <span class="optional">(optional)</span></label>
+            <input id="sRoom" type="text" placeholder="G006-B" autocomplete="off"></div>
+          <div class="f"><label for="sWho">Instructor <span class="optional">(optional)</span></label>
+            <input id="sWho" type="text" placeholder="" autocomplete="off"></div>
+        </div>
+        <div class="acts">
+          <button class="btn" id="sessCancel">Cancel</button>
+          <button class="btn primary" id="sessSave">Save time</button>
+        </div>
+      </div>
+      <p class="err" id="cErr">Add at least one time before saving.</p>
+    </div>
+
+    <!-- ---- Meeting fields ---- -->
+    <div id="meetFields" style="display:none">
+      <div class="f"><label for="mTitle">Title</label>
+        <input id="mTitle" type="text" placeholder="Nexus weekly sync" autocomplete="off"></div>
+      <div class="row" style="margin-top:9px">
+        <div class="f"><label for="mDay">Day</label><select id="mDay"></select></div>
+        <div class="f"><label for="mStart">Starts</label><input id="mStart" type="time" value="12:00" step="300"></div>
+        <div class="f"><label for="mLen">Length</label>
+          <select id="mLen">
+            <option value="30">30 min</option>
+            <option value="60" selected>1 hour</option>
+            <option value="90">1.5 hours</option>
+            <option value="120">2 hours</option>
+            <option value="180">3 hours</option>
+          </select>
+        </div>
+      </div>
+      <div class="f" style="margin-top:9px"><label for="mWhere">Where <span class="optional">(optional)</span></label>
+        <input id="mWhere" type="text" placeholder="Library, Zoom" autocomplete="off"></div>
+      <p class="hint" style="margin-top:8px">Meetings belong to this week only &mdash; they clear themselves once the week turns over.</p>
+    </div>
+
+    <!-- ---- Conference fields ---- -->
+    <div id="confFields" style="display:none">
+      <div class="f"><label for="fTitle2">Title</label>
+        <input id="fTitle2" type="text" placeholder="AI Egypt Summit" autocomplete="off"></div>
+      <div class="f" style="margin-top:9px">
+        <label>Days it covers</label>
+        <div class="chips" id="confDays" style="justify-content:flex-start"></div>
+      </div>
+      <p class="hint" style="margin-top:8px">
+        A conference sits above the time axis, not inside it &mdash; your lectures stay fully visible
+        underneath. Also cleared at week's end.
+      </p>
+    </div>
+
+    <div class="warnbox" id="warn" data-on="false">
+      <b>This overlaps something else</b>
+      <ul id="warnList"></ul>
+      <p style="margin-top:6px">Saving anyway is fine &mdash; both will be shown side by side.</p>
+    </div>
+
+    <div class="acts">
+      <button class="btn ghost danger" id="btnDelete" style="display:none">Delete</button>
+      <button class="btn" id="btnCancel">Cancel</button>
+      <button class="btn primary" id="btnSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============== Manage sheet ============== -->
+<div class="scrim" id="scrimM">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mgTitle">
+    <h2 id="mgTitle">Manage</h2>
+
+    <h3>Your teaching days</h3>
+    <div class="chips" id="daysChips" style="justify-content:flex-start"></div>
+
+    <h3 style="margin-top:4px">Courses</h3>
+    <div class="courselist" id="courseList"></div>
+    <button class="btn small" id="btnNewCourse" style="align-self:flex-start">+ New course</button>
+
+    <div class="f" style="border-top:1px solid var(--rule-soft);padding-top:12px">
+      <label for="fBackup">Backup &mdash; copy this text to move your schedule to another device</label>
+      <textarea id="fBackup" spellcheck="false"></textarea>
+      <div class="acts" style="justify-content:flex-start">
+        <button class="btn small" id="btnRestore">Restore from text</button>
+      </div>
+      <p class="hint">Everything lives in this browser only. Nothing is uploaded anywhere.</p>
+    </div>
+
+    <div class="acts">
+      <button class="btn" id="btnCloseManage">Close</button>
+    </div>
+  </div>
+</div>
+
+<noscript><p style="padding:14px;font-size:13px;line-height:1.7">
+This app needs JavaScript enabled to run &mdash; it builds your timetable entirely in your browser.
+</p></noscript>
+
+<script>
+(function () {
+  "use strict";
+
+  var WD = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+  var PAL_L = ['#1D5FA8','#0B7A66','#6D3CA0','#B4471A','#96700A','#9C1857','#2E7D32','#C0392B','#1B7F8E','#4C5A68'];
+  var PAL_D = ['#6BA6E8','#3BC0A6','#B287EA','#F08A5C','#D9B03C','#EB6FA6','#6FCB7F','#E8746A','#5FC2D1','#93A5B4'];
+
+  function dark(){ return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches; }
+  function hueOf(i){ var p = dark() ? PAL_D : PAL_L; return p[((i % p.length) + p.length) % p.length]; }
+
+  var el = function (i) { return document.getElementById(i); };
+  var uid = function (p) { return p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); };
+  function pad(n){ return (n < 10 ? '0' : '') + n; }
+  function hhmm(m){ return pad(Math.floor(m / 60)) + ':' + pad(m % 60); }
+  function dur(m){ var h = m / 60; return (m % 60 ? h.toFixed(1).replace(/\.0$/, '') : String(h)) + 'h'; }
+  function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (ch) {
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[ch];
+    });
+  }
+
+  /* ================= storage ================= */
+  var DAYS = [];       // sorted array of weekday ints, 0=Sun .. 6=Sat
+  var COURSES = [];    // [{id,code,name,color,credits,sessions:[{id,type,label,section,day,s,e,room,who}]}]
+  var MINE = [];        // meetings + conferences, week-scoped
+
+  function loadDays(){
+    try { var v = JSON.parse(localStorage.getItem('spine.days') || '[]'); DAYS = Array.isArray(v) ? v.slice().sort(function(a,b){return a-b;}) : []; }
+    catch (e) { DAYS = []; }
+  }
+  function saveDays(){ try { localStorage.setItem('spine.days', JSON.stringify(DAYS)); } catch (e) {} }
+
+  function loadCourses(){
+    try { var v = JSON.parse(localStorage.getItem('spine.courses') || '[]'); COURSES = Array.isArray(v) ? v : []; }
+    catch (e) { COURSES = []; }
+  }
+  function saveCourses(){ try { localStorage.setItem('spine.courses', JSON.stringify(COURSES)); } catch (e) {} }
+
+  function loadEvents(){
+    try { var v = JSON.parse(localStorage.getItem('spine.events') || '[]'); MINE = Array.isArray(v) ? v : []; }
+    catch (e) { MINE = []; }
+  }
+  function saveEvents(){ try { localStorage.setItem('spine.events', JSON.stringify(MINE)); } catch (e) {} }
+
+  /* meetings/conferences belong to the week they were added in */
+  function weekKey(d){
+    var n = d ? new Date(d) : new Date();
+    n.setHours(0, 0, 0, 0); n.setDate(n.getDate() - n.getDay());
+    return n.getFullYear() + '-' + pad(n.getMonth() + 1) + '-' + pad(n.getDate());
+  }
+  function purgeEvents(){
+    var k = weekKey(), keep = MINE.filter(function (m) { return m.wk === k; });
+    if (keep.length !== MINE.length) { MINE = keep; saveEvents(); }
+  }
+
+  /* ================= derived model ================= */
+  function nextTeachingDay(from){
+    if (!DAYS.length) return null;
+    for (var i = 0; i < 7; i++){ var d = (from + i) % 7; if (DAYS.indexOf(d) !== -1) return d; }
+    return DAYS[0];
+  }
+  function moment(){
+    var n = new Date();
+    return { d: n.getDay(), m: n.getHours() * 60 + n.getMinutes() };
+  }
+
+  function sessionsOn(day){
+    var out = [];
+    COURSES.forEach(function (c) {
+      c.sessions.forEach(function (s) {
+        if (s.day !== day) return;
+        out.push({
+          s: s.s, e: s.e, fixed: 1, aux: (s.type === 'Lab' || s.type === 'Tutorial') ? 1 : 0,
+          hue: hueOf(c.color), code: c.code, name: c.name,
+          kind: (s.type === 'Other' ? (s.label || 'Other') : s.type) + (s.section ? ' \u00b7 Sec ' + s.section : ''),
+          room: s.room || '', who: s.who || '',
+          courseId: c.id, sessionId: s.id
+        });
+      });
+    });
+    return out;
+  }
+  function meetingsOn(day){
+    return MINE.filter(function (m) { return m.type === 'meeting' && m.d === day; });
+  }
+  function confsOn(day){
+    return MINE.filter(function (m) { return m.type === 'conference' && (m.days || []).indexOf(day) !== -1; });
+  }
+  function timed(day){ return sessionsOn(day).concat(meetingsOn(day)); }
+
+  /* the axis stretches to fit whatever has actually been scheduled */
+  var A = 480, B = 960, SPAN = 480;
+  function axis(){
+    var lo = null, hi = null;
+    DAYS.forEach(function (d) {
+      timed(d).forEach(function (x) {
+        var s0 = Math.floor(x.s / 60) * 60, e0 = Math.ceil(x.e / 60) * 60;
+        lo = lo === null ? s0 : Math.min(lo, s0);
+        hi = hi === null ? e0 : Math.max(hi, e0);
+      });
+    });
+    A = lo === null ? 480 : lo; B = hi === null ? 960 : Math.max(hi, A + 60); SPAN = B - A;
+  }
+
+  /* split-on-conflict: overlapping items share the lane, each keeping its
+     own width; a fixed course session gets more of it, since it cannot move */
+  function lay(day){
+    var ev = timed(day).slice().sort(function (a, b) { return a.s - b.s || b.e - a.e; });
+    var clusters = [], cur = [], end = -1;
+    ev.forEach(function (e) {
+      if (cur.length && e.s >= end) { clusters.push(cur); cur = []; end = -1; }
+      cur.push(e); end = Math.max(end, e.e);
+    });
+    if (cur.length) clusters.push(cur);
+
+    clusters.forEach(function (cl) {
+      var lastEnd = [];
+      cl.forEach(function (e) {
+        var i = 0; while (i < lastEnd.length && lastEnd[i] > e.s) i++;
+        lastEnd[i] = e.e; e._c = i;
+      });
+      var n = lastEnd.length, w = [], tot = 0;
+      for (var i = 0; i < n; i++){
+        var hasFixed = cl.some(function (e) { return e._c === i && e.fixed; });
+        w[i] = hasFixed ? 1.35 : 1; tot += w[i];
+      }
+      var acc = [0];
+      for (i = 0; i < n; i++) acc[i + 1] = acc[i] + w[i];
+      cl.forEach(function (e) {
+        e._left = acc[e._c] / tot * 100; e._w = w[e._c] / tot * 100;
+        var os = null, oe = null;
+        cl.forEach(function (o) {
+          if (o === e || o.s >= e.e || e.s >= o.e) return;
+          os = os === null ? Math.max(e.s, o.s) : Math.min(os, Math.max(e.s, o.s));
+          oe = oe === null ? Math.min(e.e, o.e) : Math.max(oe, Math.min(e.e, o.e));
+        });
+        e._ovS = os; e._ovE = oe;
+      });
+    });
+    return ev;
+  }
+
+  function gaps(day){
+    var ev = timed(day).slice().sort(function (a, b) { return a.s - b.s; });
+    var out = [], cur = A;
+    ev.forEach(function (e) { if (e.s > cur) out.push({ s: cur, e: e.s }); cur = Math.max(cur, e.e); });
+    if (cur < B) out.push({ s: cur, e: B });
+    return out.filter(function (g) { return g.e - g.s >= 15; });
+  }
+  function openMins(day){ return gaps(day).reduce(function (a, g) { return a + (g.e - g.s); }, 0); }
+
+  /* ================= rendering ================= */
+  var view = 'today';
+  var cols = el('cols'), ticks = el('ticksIn'), bandsEl = el('bands');
+  var board = el('board'), foot = el('foot'), empty = el('empty'), stage = el('stage');
+
+  function top(m){ return (m - A) / SPAN * 100; }
+
+  function evtNode(x){
+    var d = document.createElement('div');
+    var len = x.e - x.s;
+    d.className = 'evt' + (x.fixed ? '' : ' mine') + (x.aux ? ' aux' : '') + (len < 45 ? ' tiny' : '');
+    d.style.top = top(x.s) + '%'; d.style.height = (len / SPAN * 100) + '%';
+    d.style.left = x._left + '%'; d.style.width = x._w + '%';
+    d.dataset.start = x.s; d.dataset.end = x.e;
+
+    if (x.fixed){
+      d.style.setProperty('--hue', x.hue);
+      d.innerHTML =
+        '<span class="rail"></span><div class="body"><div class="meta">' +
+          '<div class="code">' + esc(x.code) + '</div>' +
+          '<div class="name">' + esc(x.name) + '</div>' +
+          '<div class="kind">' + esc(x.kind) + '</div>' +
+          (x.who ? '<div class="who">' + esc(x.who) + '</div>' : '') +
+        '</div>' + (x.room ? '<div class="gate"><b>' + esc(x.room) + '</b><span>room</span></div>' : '') + '</div>';
+      d.addEventListener('click', function(){ openCourse(x.courseId); });
+    } else if (x.type === 'meeting') {
+      d.style.setProperty('--hue', 'var(--ink-2)');
+      d.innerHTML =
+        '<span class="rail"></span><div class="body"><div class="meta">' +
+          '<div class="code">' + esc(x.title || 'Meeting') + '</div>' +
+          '<div class="kind">' + hhmm(x.s) + '&ndash;' + hhmm(x.e) + ' &middot; ' + dur(len) + '</div>' +
+        '</div>' + (x.where ? '<div class="gate"><b>' + esc(x.where) + '</b><span>where</span></div>' : '') + '</div>';
+      d.addEventListener('click', function(){ openEditor('event', x.id); });
+    }
+
+    if (x._ovS !== null && x._ovS !== undefined){
+      var b = document.createElement('span');
+      b.className = 'clashband';
+      b.style.top = ((x._ovS - x.s) / len * 100) + '%';
+      b.style.height = ((x._ovE - x._ovS) / len * 100) + '%';
+      b.title = 'Overlaps another item from ' + hhmm(x._ovS) + ' to ' + hhmm(x._ovE) + ' \u2014 both stay visible';
+      d.appendChild(b);
+    }
+    return d;
+  }
+
+  function spineFor(day){
+    var sp = document.createElement('div'); sp.className = 'spine';
+    gaps(day).forEach(function (g) {
+      var n = document.createElement('div'); n.className = 'gapabs';
+      n.style.top = top(g.s) + '%'; n.style.height = ((g.e - g.s) / SPAN * 100) + '%';
+      n.dataset.end = g.e;
+      n.innerHTML = '<span class="hollow"></span><span class="txt">' +
+        dur(g.e - g.s) + ' open <em>&middot; ' + hhmm(g.s) + '</em></span>';
+      sp.appendChild(n);
+    });
+    lay(day).forEach(function (x) { sp.appendChild(evtNode(x)); });
+    return sp;
+  }
+  function colFor(day, head){
+    var col = document.createElement('div'); col.className = 'col'; col.dataset.day = day;
+    if (head){
+      var h = document.createElement('div');
+      h.className = 'colhead' + (moment().d === day ? ' today' : '');
+      h.textContent = WD[day];
+      col.appendChild(h);
+    }
+    col.appendChild(spineFor(day));
+    return col;
+  }
+  function bandNode(cf, spanAll){
+    var b = document.createElement('div'); b.className = 'band';
+    if (spanAll){
+      var idxs = (cf.days || []).map(function (d) { return DAYS.indexOf(d); }).filter(function (i) { return i !== -1; });
+      if (idxs.length){
+        var lo = Math.min.apply(null, idxs), hi = Math.max.apply(null, idxs);
+        b.style.gridColumn = (lo + 1) + ' / span ' + (hi - lo + 1);
+      }
+    }
+    var lbl = (cf.days || []).map(function (d) { return WD[d].slice(0, 3); }).join(', ');
+    b.innerHTML = '<span class="dot"></span><span class="bt">' + esc(cf.title || 'Conference') +
+      '</span><span class="bs">' + lbl + ' &middot; all day</span>';
+    b.addEventListener('click', function(){ openEditor('conference', cf.id); });
+    return b;
+  }
+  function drawTicks(offset){
+    ticks.innerHTML = ''; ticks.style.marginTop = offset + 'px';
+    ticks.style.height = 'calc(100% - ' + offset + 'px)';
+    var step = SPAN > 660 ? 180 : 120;
+    for (var m = Math.ceil(A / step) * step; m <= B; m += step){
+      var t = document.createElement('div'); t.className = 'tick'; t.textContent = hhmm(m);
+      t.style.top = top(m) + '%'; ticks.appendChild(t);
+    }
+  }
+
+  function renderEmpty(kind){
+    board.style.display = 'none'; foot.style.display = 'none';
+    empty.style.display = 'flex'; empty.innerHTML = '';
+    if (kind === 'days'){
+      empty.innerHTML =
+        '<h2>Which days do you have classes?</h2>' +
+        '<p>Pick your teaching days. This sets the columns of your board \u2014 change it anytime from Manage.</p>' +
+        '<div class="chips" id="onbDays"></div>' +
+        '<button class="btn primary" id="onbGo">Continue</button>';
+      var wrap = el('onbDays');
+      WD.forEach(function (name, i) {
+        var c = document.createElement('button');
+        c.className = 'chip-day'; c.type = 'button'; c.textContent = name.slice(0, 3);
+        c.setAttribute('aria-pressed', DAYS.indexOf(i) !== -1 ? 'true' : 'false');
+        c.addEventListener('click', function(){
+          var on = c.getAttribute('aria-pressed') === 'true';
+          c.setAttribute('aria-pressed', String(!on));
+        });
+        wrap.appendChild(c);
+      });
+      el('onbGo').addEventListener('click', function(){
+        var picked = [];
+        [].forEach.call(wrap.children, function (c, i) { if (c.getAttribute('aria-pressed') === 'true') picked.push(i); });
+        if (!picked.length) return;
+        DAYS = picked.sort(function(a,b){return a-b;}); saveDays(); build();
+      });
+    } else {
+      empty.innerHTML =
+        '<h2>No courses yet</h2>' +
+        '<p>Add your first course \u2014 just a code, a name, and one time. Everything else is optional.</p>' +
+        '<button class="btn primary" id="onbAddCourse">+ Add your first course</button>';
+      el('onbAddCourse').addEventListener('click', function(){ openEditor('course', null); });
+    }
+  }
+
+  function build(){
+    purgeEvents();
+    if (!DAYS.length){ renderEmpty('days'); return; }
+    if (!COURSES.length && !MINE.length){ renderEmpty('courses'); return; }
+    empty.style.display = 'none'; board.style.display = 'grid'; foot.style.display = 'flex';
+
+    axis();
+    cols.innerHTML = ''; bandsEl.innerHTML = '';
+    var mo = moment();
+    var real = DAYS.indexOf(mo.d) !== -1;
+    var focus = real ? mo.d : nextTeachingDay(mo.d);
+
+    if (view === 'today'){
+      cols.style.gridTemplateColumns = '1fr'; bandsEl.style.gridTemplateColumns = '1fr';
+      confsOn(focus).forEach(function (cf) { bandsEl.appendChild(bandNode(cf, false)); });
+      cols.appendChild(colFor(focus, false));
+      el('dayTitle').textContent = WD[focus];
+      el('daySub').textContent = real ? 'today' : 'next teaching day';
+      var n = timed(focus).length;
+      el('footLeft').innerHTML = '<b>' + dur(openMins(focus)) + '</b> open today';
+      el('footRight').innerHTML = n + (n === 1 ? ' item' : ' items') + ' &middot; ' + hhmm(A) + '\u2013' + hhmm(B);
+      drawTicks(0);
+    } else {
+      cols.style.gridTemplateColumns = 'repeat(' + DAYS.length + ',1fr)';
+      bandsEl.style.gridTemplateColumns = 'repeat(' + DAYS.length + ',1fr)';
+      MINE.filter(function (m) { return m.type === 'conference'; }).forEach(function (cf) { bandsEl.appendChild(bandNode(cf, true)); });
+      DAYS.forEach(function (d) { cols.appendChild(colFor(d, true)); });
+      el('dayTitle').textContent = 'Week';
+      el('daySub').textContent = DAYS.length + ' teaching day' + (DAYS.length === 1 ? '' : 's');
+      var tot = DAYS.reduce(function (a, d) { return a + openMins(d); }, 0);
+      var sessCount = DAYS.reduce(function (a, d) { return a + sessionsOn(d).length; }, 0);
+      var credits = COURSES.reduce(function (a, c) { return a + (parseFloat(c.credits) || 0); }, 0);
+      var free = WD.map(function (_, i) { return i; }).filter(function (i) { return DAYS.indexOf(i) === -1; })
+        .map(function (i) { return WD[i].slice(0, 3); });
+      el('footLeft').innerHTML = '<b>' + dur(tot) + '</b> open across the week';
+      el('footRight').innerHTML = sessCount + ' sessions' +
+        (credits > 0 ? ' &middot; <b>' + credits + ' credits</b>' : '') +
+        (free.length ? ' &middot; <b>' + free.join(', ') + ' free</b>' : '');
+      var h = cols.querySelector('.colhead');
+      drawTicks(h ? h.offsetHeight : 0);
+    }
+    paint(); fitAll();
+  }
+
+  function paint(){
+    [].forEach.call(cols.querySelectorAll('.evt,.gapabs'), function (n) { n.classList.remove('done'); });
+    [].forEach.call(cols.querySelectorAll('.drain,.remain'), function (n) { n.remove(); });
+    var old = ticks.querySelector('.tick.now'); if (old) old.remove();
+
+    var mo = moment(), day = mo.d, mins = mo.m;
+    if (DAYS.indexOf(day) === -1 || mins < A || mins >= B) return;
+    var col = cols.querySelector('.col[data-day="' + day + '"]');
+    if (!col) return;
+    var sp = col.querySelector('.spine');
+
+    [].forEach.call(sp.querySelectorAll('.evt'), function (n) {
+      var s0 = +n.dataset.start, e0 = +n.dataset.end;
+      if (mins < s0) return;
+      var spent = mins >= e0 ? 1 : (mins - s0) / (e0 - s0);
+      if (mins >= e0) n.classList.add('done');
+      var dr = document.createElement('div'); dr.className = 'drain'; dr.style.height = (spent * 100) + '%';
+      n.appendChild(dr);
+      if (mins < e0){
+        var gate = n.querySelector('.gate');
+        if (!gate){ gate = document.createElement('div'); gate.className = 'gate'; n.querySelector('.body').appendChild(gate); }
+        var left = e0 - mins;
+        var rm = document.createElement('span'); rm.className = 'remain';
+        rm.textContent = (left >= 60 ? Math.floor(left / 60) + 'h ' + (left % 60) + 'm' : left + ' min') + ' left';
+        gate.appendChild(rm);
+      }
+    });
+    [].forEach.call(sp.querySelectorAll('.gapabs'), function (n) { if (mins >= +n.dataset.end) n.classList.add('done'); });
+
+    var t = document.createElement('div'); t.className = 'tick now'; t.textContent = hhmm(mins);
+    t.style.top = top(mins) + '%'; ticks.appendChild(t);
+  }
+
+  function fitAll(){
+    [].forEach.call(cols.querySelectorAll('.evt'), function (n) {
+      var w = n.getBoundingClientRect().width;
+      n.classList.toggle('w3', w < 178); n.classList.toggle('w2', w < 124); n.classList.toggle('w1', w < 88);
+    });
+  }
+
+  /* ================= add/edit sheet ================= */
+  var scrim = el('scrim'), curType = 'course', editingEvent = null, editingCourse = null, editingSession = null;
+  var draftSessions = [];
+
+  function dayOptions(sel){
+    sel.innerHTML = '';
+    DAYS.forEach(function (d) {
+      var o = document.createElement('option'); o.value = d; o.textContent = WD[d]; sel.appendChild(o);
+    });
+  }
+  function buildSwatches(){
+    var wrap = el('swatches'); wrap.innerHTML = '';
+    for (var i = 0; i < PAL_L.length; i++){
+      (function (i) {
+        var b = document.createElement('button');
+        b.className = 'swatch'; b.type = 'button'; b.style.setProperty('--sw', hueOf(i));
+        b.dataset.i = i; b.setAttribute('aria-pressed', 'false');
+        b.innerHTML = '<svg viewBox="0 0 20 20"><path d="M8 13.4 4.6 10l-1.4 1.4L8 16.2 17 7.2 15.6 5.8z"/></svg>';
+        b.addEventListener('click', function(){
+          [].forEach.call(wrap.children, function (c) { c.setAttribute('aria-pressed', 'false'); });
+          b.setAttribute('aria-pressed', 'true');
+        });
+        wrap.appendChild(b);
+      })(i);
+    }
+  }
+  function pickSwatch(i){
+    var wrap = el('swatches');
+    [].forEach.call(wrap.children, function (c) { c.setAttribute('aria-pressed', String(+c.dataset.i === i)); });
+  }
+  function chosenSwatch(){
+    var wrap = el('swatches'), sel = 0;
+    [].forEach.call(wrap.children, function (c) { if (c.getAttribute('aria-pressed') === 'true') sel = +c.dataset.i; });
+    return sel;
+  }
+
+  function setType(t){
+    curType = t;
+    [].forEach.call(el('typeSel').children, function (b) { b.setAttribute('aria-selected', String(b.dataset.t === t)); });
+    el('courseFields').style.display = t === 'course' ? '' : 'none';
+    el('meetFields').style.display = t === 'meeting' ? '' : 'none';
+    el('confFields').style.display = t === 'conference' ? '' : 'none';
+    checkClash();
+  }
+  [].forEach.call(el('typeSel').children, function (b) { b.addEventListener('click', function(){ setType(b.dataset.t); }); });
+
+  function renderSessList(){
+    var wrap = el('sessList'); wrap.innerHTML = '';
+    draftSessions.forEach(function (s, idx) {
+      var row = document.createElement('div'); row.className = 'sessrow';
+      var label = s.type === 'Other' ? (s.label || 'Other') : s.type;
+      row.innerHTML = '<span class="srmeta"><b>' + esc(label) + '</b> &middot; ' + WD[s.day].slice(0,3) + ' ' +
+        hhmm(s.s) + '&ndash;' + hhmm(s.e) + (s.room ? ' &middot; ' + esc(s.room) : '') + '</span>' +
+        '<button data-a="edit">Edit</button><button data-a="del">Remove</button>';
+      row.querySelector('[data-a="edit"]').addEventListener('click', function(){ openSessForm(idx); });
+      row.querySelector('[data-a="del"]').addEventListener('click', function(){ draftSessions.splice(idx, 1); renderSessList(); });
+      wrap.appendChild(row);
+    });
+  }
+  function openSessForm(idx){
+    editingSession = (idx === undefined) ? null : idx;
+    var s = editingSession !== null ? draftSessions[editingSession] : null;
+    el('sType').value = s ? s.type : 'Lecture';
+    el('sOther').value = s && s.type === 'Other' ? (s.label || '') : '';
+    el('sOtherWrap').dataset.on = String(el('sType').value === 'Other');
+    el('sSec').value = s ? (s.section || '') : '';
+    dayOptions(el('sDay')); el('sDay').value = s ? s.day : DAYS[0];
+    el('sStart').value = s ? hhmm(s.s) : '10:00';
+    el('sLen').value = s ? String(s.e - s.s) : '120';
+    el('sRoom').value = s ? (s.room || '') : '';
+    el('sWho').value = s ? (s.who || '') : '';
+    el('sessForm').style.display = 'flex';
+  }
+  el('sType').addEventListener('change', function(){ el('sOtherWrap').dataset.on = String(el('sType').value === 'Other'); });
+  el('btnAddSession').addEventListener('click', function(){ openSessForm(undefined); });
+  el('sessCancel').addEventListener('click', function(){ el('sessForm').style.display = 'none'; });
+  el('sessSave').addEventListener('click', function(){
+    var p = (el('sStart').value || '10:00').split(':'); var st = (+p[0]) * 60 + (+p[1]);
+    var obj = {
+      id: (editingSession !== null && draftSessions[editingSession]) ? draftSessions[editingSession].id : uid('s'),
+      type: el('sType').value, label: el('sOther').value.trim(),
+      section: el('sSec').value.trim(), day: +el('sDay').value,
+      s: st, e: st + (+el('sLen').value),
+      room: el('sRoom').value.trim(), who: el('sWho').value.trim()
+    };
+    if (editingSession !== null) draftSessions[editingSession] = obj; else draftSessions.push(obj);
+    el('sessForm').style.display = 'none'; renderSessList(); checkClash();
+  });
+
+  function confDayChips(selected){
+    var wrap = el('confDays'); wrap.innerHTML = '';
+    DAYS.forEach(function (d) {
+      var c = document.createElement('button'); c.className = 'chip-day'; c.type = 'button';
+      c.textContent = WD[d].slice(0, 3);
+      c.setAttribute('aria-pressed', (selected || []).indexOf(d) !== -1 ? 'true' : 'false');
+      c.addEventListener('click', function(){
+        c.setAttribute('aria-pressed', String(c.getAttribute('aria-pressed') !== 'true'));
+      });
+      wrap.appendChild(c);
+    });
+  }
+  function pickedConfDays(){
+    var out = [];
+    [].forEach.call(el('confDays').children, function (c, i) { if (c.getAttribute('aria-pressed') === 'true') out.push(DAYS[i]); });
+    return out;
+  }
+
+  function checkClash(){
+    var w = el('warn');
+    if (curType !== 'meeting'){ w.dataset.on = 'false'; return; }
+    var p = (el('mStart').value || '12:00').split(':'); var st = (+p[0]) * 60 + (+p[1]);
+    var d = +el('mDay').value, en = st + (+el('mLen').value);
+    var hits = timed(d).filter(function (x) { return x.s < en && st < x.e; });
+    if (!hits.length){ w.dataset.on = 'false'; return; }
+    el('warnList').innerHTML = hits.map(function (x) {
+      return '<li>' + (x.fixed ? '<b style="display:inline">' + esc(x.code) + '</b> ' + esc(x.kind)
+        : esc(x.title || 'Meeting')) + ' &middot; ' + hhmm(x.s) + '\u2013' + hhmm(x.e) + '</li>';
+    }).join('');
+    w.dataset.on = 'true';
+  }
+  ['mDay', 'mStart', 'mLen'].forEach(function (id) { el(id).addEventListener('input', checkClash); el(id).addEventListener('change', checkClash); });
+
+  /* Every field on every tab is reset to a blank default first, so that
+     switching tabs after opening the sheet never shows stale or missing
+     data from whichever type was open last. */
+  function resetSheet(){
+    editingCourse = null; editingEvent = null;
+    el('cCode').value = ''; el('cName').value = ''; el('cCredits').value = '';
+    buildSwatches(); pickSwatch(COURSES.length % PAL_L.length);
+    draftSessions = []; renderSessList(); el('sessForm').style.display = 'none';
+    el('cErr').dataset.on = 'false';
+
+    dayOptions(el('mDay'));
+    var fd = DAYS.indexOf(moment().d) !== -1 ? moment().d : DAYS[0];
+    el('mTitle').value = ''; el('mDay').value = fd; el('mStart').value = '12:00';
+    el('mLen').value = '60'; el('mWhere').value = '';
+
+    el('fTitle2').value = ''; confDayChips([]);
+    el('btnDelete').style.display = 'none';
+  }
+
+  function openCourse(id){
+    resetSheet();
+    editingCourse = id;
+    var c = id ? COURSES.filter(function (x) { return x.id === id; })[0] : null;
+    el('edTitle').textContent = c ? 'Edit course' : 'Add';
+    el('btnDelete').style.display = c ? '' : 'none';
+    setType('course');
+    [].forEach.call(el('typeSel').children, function (b) { b.disabled = !!c; });
+    if (c){
+      el('cCode').value = c.code; el('cName').value = c.name; el('cCredits').value = c.credits || '';
+      pickSwatch(c.color);
+      draftSessions = JSON.parse(JSON.stringify(c.sessions));
+      renderSessList();
+    }
+    scrim.dataset.open = 'true';
+    el('cCode').focus();
+  }
+
+  function openEditor(kind, id){
+    if (kind === 'course') { openCourse(id); return; }
+    resetSheet();
+    editingEvent = id || null;
+    var m = id ? MINE.filter(function (x) { return x.id === id; })[0] : null;
+    el('edTitle').textContent = m ? 'Edit' : 'Add';
+    el('btnDelete').style.display = m ? '' : 'none';
+    setType(kind);
+    [].forEach.call(el('typeSel').children, function (b) { b.disabled = !!m; });
+
+    if (kind === 'meeting'){
+      if (m){
+        el('mTitle').value = m.title || ''; el('mDay').value = m.d;
+        el('mStart').value = hhmm(m.s); el('mLen').value = String(m.e - m.s);
+        el('mWhere').value = m.where || '';
+      }
+    } else if (m) {
+      el('fTitle2').value = m.title || ''; confDayChips(m.days);
+    }
+    checkClash();
+    scrim.dataset.open = 'true';
+  }
+
+  function closeEditor(){ scrim.dataset.open = 'false'; editingEvent = null; editingCourse = null; }
+
+  el('btnAdd').addEventListener('click', function(){
+    if (!DAYS.length){ renderEmpty('days'); return; }
+    openCourse(null);
+  });
+  el('btnCancel').addEventListener('click', closeEditor);
+  scrim.addEventListener('click', function (e) { if (e.target === scrim) closeEditor(); });
+
+  el('btnSave').addEventListener('click', function(){
+    if (curType === 'course'){
+      var code = el('cCode').value.trim(), name = el('cName').value.trim();
+      if (!code || !name || !draftSessions.length){
+        el('cErr').textContent = !draftSessions.length ? 'Add at least one time before saving.' : 'Code and name are both required.';
+        el('cErr').dataset.on = 'true'; return;
+      }
+      var obj = {
+        id: editingCourse || uid('c'), code: code, name: name,
+        credits: el('cCredits').value ? +el('cCredits').value : null,
+        color: chosenSwatch(), sessions: draftSessions
+      };
+      if (editingCourse) COURSES = COURSES.map(function (c) { return c.id === editingCourse ? obj : c; });
+      else COURSES.push(obj);
+      saveCourses(); closeEditor(); build(); refreshManageIfOpen();
+      return;
+    }
+    var m;
+    if (curType === 'meeting'){
+      var p = (el('mStart').value || '12:00').split(':'); var st = (+p[0]) * 60 + (+p[1]);
+      m = { type: 'meeting', title: el('mTitle').value.trim() || 'Meeting',
+        d: +el('mDay').value, s: st, e: st + (+el('mLen').value), where: el('mWhere').value.trim() };
+    } else {
+      var days = pickedConfDays();
+      if (!days.length) return;
+      m = { type: 'conference', title: el('fTitle2').value.trim() || 'Conference', days: days };
+    }
+    m.wk = weekKey();
+    if (editingEvent){ m.id = editingEvent; MINE = MINE.map(function (x) { return x.id === editingEvent ? m : x; }); }
+    else { m.id = uid('e'); MINE.push(m); }
+    saveEvents(); closeEditor(); build();
+  });
+
+  el('btnDelete').addEventListener('click', function(){
+    if (curType === 'course' && editingCourse){
+      COURSES = COURSES.filter(function (c) { return c.id !== editingCourse; });
+      saveCourses(); refreshManageIfOpen();
+    } else if (editingEvent){
+      MINE = MINE.filter(function (x) { return x.id !== editingEvent; });
+      saveEvents();
+    }
+    closeEditor(); build();
+  });
+
+  /* ================= manage sheet ================= */
+  var scrimM = el('scrimM');
+  function refreshManageIfOpen(){ if (scrimM.dataset.open === 'true') renderManage(); }
+
+  function renderManage(){
+    var chips = el('daysChips'); chips.innerHTML = '';
+    WD.forEach(function (name, i) {
+      var c = document.createElement('button'); c.className = 'chip-day'; c.type = 'button'; c.textContent = name.slice(0, 3);
+      c.setAttribute('aria-pressed', DAYS.indexOf(i) !== -1 ? 'true' : 'false');
+      c.addEventListener('click', function(){
+        var on = c.getAttribute('aria-pressed') === 'true';
+        c.setAttribute('aria-pressed', String(!on));
+        var picked = [];
+        [].forEach.call(chips.children, function (cc, ii) { if (cc.getAttribute('aria-pressed') === 'true') picked.push(ii); });
+        DAYS = picked.sort(function(a,b){return a-b;}); saveDays(); build();
+      });
+      chips.appendChild(c);
+    });
+
+    var list = el('courseList'); list.innerHTML = '';
+    if (!COURSES.length){
+      list.innerHTML = '<p class="hint">No courses yet.</p>';
+    }
+    COURSES.forEach(function (c) {
+      var row = document.createElement('div'); row.className = 'courserow';
+      row.innerHTML = '<span class="dot2" style="--sw:' + hueOf(c.color) + '"></span>' +
+        '<span class="cinfo"><span class="ccode">' + esc(c.code) + '</span><br>' +
+        '<span class="cname">' + esc(c.name) + '</span></span>' +
+        '<span class="ccount">' + c.sessions.length + (c.sessions.length === 1 ? ' time' : ' times') + '</span>';
+      row.addEventListener('click', function(){ scrimM.dataset.open = 'false'; openCourse(c.id); });
+      list.appendChild(row);
+    });
+
+    el('fBackup').value = JSON.stringify({ days: DAYS, courses: COURSES, events: MINE }, null, 1);
+  }
+
+  el('btnManage').addEventListener('click', function(){ renderManage(); scrimM.dataset.open = 'true'; });
+  el('btnCloseManage').addEventListener('click', function(){ scrimM.dataset.open = 'false'; });
+  scrimM.addEventListener('click', function (e) { if (e.target === scrimM) scrimM.dataset.open = 'false'; });
+  el('btnNewCourse').addEventListener('click', function(){ scrimM.dataset.open = 'false'; openCourse(null); });
+
+  el('btnRestore').addEventListener('click', function(){
+    try {
+      var v = JSON.parse(el('fBackup').value);
+      var k = weekKey();
+      if (Array.isArray(v)) { MINE = v.map(function (m) { m.wk = k; return m; }); }
+      else {
+        if (Array.isArray(v.days)) DAYS = v.days.slice().sort(function(a,b){return a-b;});
+        if (Array.isArray(v.courses)) COURSES = v.courses;
+        if (Array.isArray(v.events)) MINE = v.events.map(function (m) { m.wk = k; return m; });
+      }
+      saveDays(); saveCourses(); saveEvents();
+      renderManage(); build();
+    } catch (e) {
+      el('fBackup').style.borderColor = 'var(--now)';
+      setTimeout(function(){ el('fBackup').style.borderColor = ''; }, 1600);
+    }
+  });
+
+  /* ================= views ================= */
+  function setView(v){
+    view = v; document.body.dataset.view = v;
+    el('btnToday').setAttribute('aria-selected', String(v === 'today'));
+    el('btnWeek').setAttribute('aria-selected', String(v === 'week'));
+    try { localStorage.setItem('spine.view', v); } catch (e) {}
+    build();
+  }
+  el('btnToday').addEventListener('click', function(){ setView('today'); });
+  el('btnWeek').addEventListener('click', function(){ setView('week'); });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    if (scrim.dataset.open === 'true') closeEditor();
+    if (scrimM.dataset.open === 'true') scrimM.dataset.open = 'false';
+  });
+
+  /* ================= boot ================= */
+  loadDays(); loadCourses(); loadEvents();
+  var saved = null;
+  try { saved = localStorage.getItem('spine.view'); } catch (e) {}
+  setView(saved === 'week' ? 'week' : 'today');
+
+  setInterval(function(){ if (DAYS.length && (COURSES.length || MINE.length)) paint(); }, 30000);
+  window.addEventListener('resize', function(){ if (DAYS.length && (COURSES.length || MINE.length)) { build(); } });
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden) build(); });
+  if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', build);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(build);
+})();
+</script>
+
+</body>
+</html>
