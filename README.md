@@ -9,8 +9,7 @@ never the thing that gets cut off.
 No sign-up, no server, no tracking. It's one HTML file that runs entirely in
 your browser. Open the link, add your courses, and it's yours.
 
-**[→ Open the app](#)** &nbsp;·&nbsp; see [Getting started](#getting-started) below for how to use it and keep it
-
+**[→ Open the app](https://omar-issam-abdelhalim.github.io/day-spine/)** &nbsp;·&nbsp; see [Getting started](#getting-started) below for how to use it and keep it
 ---
 
 ## Why this exists
