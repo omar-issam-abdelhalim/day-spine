@@ -6,10 +6,12 @@ personal meeting can occupy the same hour without either one hiding the
 other. And the one thing you actually need mid-walk-to-class — the room — is
 never the thing that gets cut off.
 
-No sign-up, no server, no tracking. It's one HTML file that runs entirely in
-your browser. Open the link, add your courses, and it's yours.
+No sign-up, no server, no tracking. Install it on your phone like an app, and
+it keeps working with no internet connection. Your schedule never leaves your
+device.
 
 **[→ Open the app](https://omar-issam-abdelhalim.github.io/day-spine/)** &nbsp;·&nbsp; see [Getting started](#getting-started) below for how to use it and keep it
+
 ---
 
 ## Why this exists
@@ -53,6 +55,21 @@ tells you exactly what it collides with, and lets you save it anyway.
 a plain-text backup you can copy to another device.
 
 ![Manage sheet](assets/07-manage.png)
+
+## Install it as an app
+
+Day Spine is a Progressive Web App: open it once with an internet connection,
+install it, and from then on it opens from your home screen, full screen, and
+works fully offline.
+
+- **Android (Chrome):** open the link, then menu **⋮ → Install app**
+  (on some phones it's called **Add to Home screen**).
+- **iPhone (Safari):** open the link, tap **Share → Add to Home Screen**.
+- **Desktop (Chrome / Edge):** click the install icon at the right end of the
+  address bar.
+
+When a new version is pushed to this repo, the installed app picks it up by
+itself the next time it opens with a connection.
 
 ---
 
@@ -107,12 +124,12 @@ can paste back in anywhere else you open the app.
 
 It's a single self-contained HTML file. Any of these work:
 
-- **Just open it.** Download `index.html` and double-click it. Everything
-  works except the Google-hosted font, which falls back to your system font.
-- **Host it anywhere static.** Drop it on GitHub Pages, Netlify, Vercel, or
-  any web server — it needs nothing else.
-- **Add it to your phone's home screen.** Open the hosted link in Chrome or
-  Safari, then use "Add to Home Screen" for something that opens like an app.
+- **Just open it.** Download `docs/index.html` and double-click it. The font
+  is embedded, so it works with no connection. (Installing as an app needs
+  it to be hosted, see above.)
+- **Host it anywhere static.** Serve the `docs/` folder from GitHub Pages,
+  Netlify, Vercel, or any web server. `manifest.webmanifest` and `sw.js` make
+  it installable and offline-capable; nothing else is required.
 
 ### Publishing your own copy on GitHub Pages
 ```
@@ -139,6 +156,9 @@ A few decisions that shape how it behaves, in case you're extending it:
 - **Colors are stored as a palette index, not a hex code**, so light and
   dark mode each get an appropriately tuned version of the same color
   automatically.
+- **Offline-first.** A small service worker (`docs/sw.js`) caches the app on
+  the first visit and serves it from the device afterwards, refreshing the
+  copy in the background whenever a connection is available.
 - **Removing a teaching day never deletes anything.** It just stops
   rendering that day's sessions — add the day back and they reappear
   exactly as they were.
