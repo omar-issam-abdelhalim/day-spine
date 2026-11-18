@@ -1,0 +1,2 @@
+# docs/ holds the app itself (served by GitHub Pages), not documentation
+docs/** linguist-documentation=false
