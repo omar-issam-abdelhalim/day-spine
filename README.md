@@ -133,13 +133,23 @@ It's a single self-contained HTML file. Any of these work:
 
 ### Publishing your own copy on GitHub Pages
 ```
-git clone <this-repo-url>
+git clone https://github.com/omar-issam-abdelhalim/day-spine.git
 cd day-spine
 git checkout -b my-schedule   # optional, if you plan to customize it
 ```
 Then in the repo's **Settings → Pages**, set the source to the `main` branch
 and the `/docs` folder, save, and GitHub gives you a live link in a minute or
 two.
+
+### Tests
+
+`tests/test_smoke.py` serves `docs/` the same way GitHub Pages does and drives the real app in a headless browser: onboarding, adding a course, local persistence across a reload, the Week view, service-worker registration and the web manifest. CI runs it on every push.
+
+```
+pip install pytest playwright
+python -m playwright install chromium
+python -m pytest -q
+```
 
 ---
 
